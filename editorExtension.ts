@@ -32,6 +32,7 @@ export function updateEditor(plugin: VimrcPlugin) {
 				this.decorations = Decoration.none;
 				this.plugin = plugin;
                 this.updateEditor();
+                if (this.plugin.done) return;
                 this.plugin.readVimInit(this.plugin.vimrcContent)
 			}
 			update(update: ViewUpdate) {

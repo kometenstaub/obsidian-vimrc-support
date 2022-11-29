@@ -62,6 +62,7 @@ export default class VimrcPlugin extends Plugin {
 	private isInsertMode: boolean = false;
 
     editor: Editor = null;
+    done: boolean = false;
     
     vimrcContent: string = "";
 
@@ -227,6 +228,10 @@ export default class VimrcPlugin extends Plugin {
             });
             this.defineFixedLayout(cmEditor);
         }
+
+        // only initVim once because the commands are all global and the editor is exchanged every time there is an editor udpate
+        // there is no need to register them every time a new editor is updated
+        this.done = true;
 	}
 
 	defineBasicCommands(vimObject: any) {
