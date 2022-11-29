@@ -59,7 +59,6 @@ export default class VimrcPlugin extends Plugin {
 	private vimStatusBar: HTMLElement = null;
 	private currentVimStatus: vimStatus = vimStatus.normal;
 	private customVimKeybinds: { [name: string]: boolean } = {};
-	private currentSelection: [EditorSelection] = null;
 	private isInsertMode: boolean = false;
     
     vimrcContent: string = "";
@@ -110,22 +109,6 @@ export default class VimrcPlugin extends Plugin {
 		})
 	}
 
-	async updateSelectionEvent(cm: CodeMirror.Editor) {
-        if (!cm) return;
-		if (
-			this.getCursorActivityHandlers(cm).some(
-				(e: { name: string }) => e.name === "updateSelection")
-		) return;
-		cm.on("cursorActivity", async (cm: CodeMirror.Editor) => this.updateSelection(cm));
-	}
-
-	async updateSelection(cm: any) {
-		this.currentSelection = cm.listSelections();
-	}
-
-	private getCursorActivityHandlers(cm: CodeMirror.Editor) {
-		return (cm as any)._handlers.cursorActivity;
-	}
 
 	async onload() {
 		await this.loadSettings();
@@ -384,9 +367,10 @@ export default class VimrcPlugin extends Plugin {
 			let beginning = newArgs[0].replace("\\\\", "\\").replace("\\ ", " "); // Get the beginning surround text
 			let ending = newArgs[1].replace("\\\\", "\\").replace("\\ ", " "); // Get the ending surround text
 
-			let currentSelections = this.currentSelection;
+            //@ts-expect-error, not typed
+			let currentSelections = editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
-			if (this.currentSelection && currentSelections?.length > 1) {
+			if (currentSelections?.length > 1) {
 				console.log("WARNING: Multiple selections in surround. Attempt to select matching cursor. (obsidian-vimrc-support)")
 				const cursorPos = editor.getCursor();
 				for (const selection of currentSelections) {
@@ -558,7 +542,8 @@ export default class VimrcPlugin extends Plugin {
 			const jsCode = params.argString.trim() as string;
 			if (jsCode[0] != '{' || jsCode[jsCode.length - 1] != '}')
 				throw new Error("Expected an argument which is JS code surrounded by curly brackets: {...}");
-			let currentSelections = this.currentSelection;
+            //@ts-expect-error, not typed
+			let currentSelections = editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			const command = Function('editor', 'view', 'selection', jsCode);
             //@ts-ignore
@@ -581,7 +566,8 @@ export default class VimrcPlugin extends Plugin {
 				if (extraCode[0] != '{' || extraCode[extraCode.length - 1] != '}')
 					throw new Error("Expected an extra code argument which is JS code surrounded by curly brackets: {...}");
 			}
-			let currentSelections = this.currentSelection;
+            //@ts-expect-error, not typed
+			let currentSelections = editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			let content = '';
 			try {

@@ -11,8 +11,6 @@ export function vimInitializer(plugin: VimrcPlugin): StateField<boolean>{
         create(state: EditorState): boolean {
             //@ts-ignore
             const editor: Editor = state.field(editorInfoField).editor
-            //@ts-expect-error, not typed
-            plugin.updateSelectionEvent(editor.cm.cm);
             plugin.readVimInit(plugin.vimrcContent, editor)
             return true;
         },
