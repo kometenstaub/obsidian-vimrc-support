@@ -1,5 +1,6 @@
 import * as keyFromAccelerator from 'keyboardevent-from-electron-accelerator';
 import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import type { EditorView, ViewPlugin } from '@codemirror/view'
 
 declare const CodeMirror: any;
 
@@ -58,6 +59,8 @@ export default class VimrcPlugin extends Plugin {
 	private customVimKeybinds: { [name: string]: boolean } = {};
 	private currentSelection: [EditorSelection] = null;
 	private isInsertMode: boolean = false;
+    
+    vimrcContent: string = "";
 
 	async captureKeyboardLayout() {
 		// This is experimental API and it might break at some point:
@@ -89,16 +92,7 @@ export default class VimrcPlugin extends Plugin {
 			this.registerYankEvents(w);
 		})
 
-		// Two events cos
-		// this don't trigger on loading/reloading obsidian with note opened
-		this.app.workspace.on("active-leaf-change", async () => {
-			this.updateSelectionEvent();
-		});
-		// and this don't trigger on opening same file in new pane
-		this.app.workspace.on("file-open", async () => {
-			this.updateSelectionEvent();
-		});
-
+        // former active-leaf-change events don't get registered anymore though
 		this.initialized = true;
 	}
 
@@ -114,11 +108,9 @@ export default class VimrcPlugin extends Plugin {
 		})
 	}
 
-	async updateSelectionEvent() {
-		const view = this.getActiveView();
-		if (!view) return;
-
-		let cm = this.getCodeMirror(view);
+	async updateSelectionEvent(editor: EditorView) {
+        //@ts-expect-error, not typed
+		let { cm } = editor.cm
 		if (
 			this.getCursorActivityHandlers(cm).some(
 				(e: { name: string }) => e.name === "updateSelection")
@@ -137,28 +129,30 @@ export default class VimrcPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new SettingsTab(this.app, this))
-
-		console.log('loading Vimrc plugin');
-
-		this.app.workspace.on('active-leaf-change', async () => {
-			if (!this.initialized)
-				await this.initialize();
-			if (this.codeMirrorVimObject.loadedVimrc)
-				return;
-			let fileName = this.settings.vimrcFileName;
-			if (!fileName || fileName.trim().length === 0) {
-				fileName = DEFAULT_SETTINGS.vimrcFileName;
-				console.log('Configured Vimrc file name is illegal, falling-back to default');
-			}
-			let vimrcContent = '';
-			try {
-				vimrcContent = await this.app.vault.adapter.read(fileName);
-			} catch (e) {
-				console.log('Error loading vimrc file', fileName, 'from the vault root', e.message) 
-			}
-			this.readVimInit(vimrcContent);
-		});
+        await this.readVimrc();
 	}
+
+    async readVimrc(): Promise<void> {
+        if (!this.initialized)
+            await this.initialize();
+        if (this.codeMirrorVimObject.loadedVimrc)
+            return;
+        let fileName = this.settings.vimrcFileName;
+        if (!fileName || fileName.trim().length === 0) {
+            fileName = DEFAULT_SETTINGS.vimrcFileName;
+            console.log('Configured Vimrc file name is illegal, falling-back to default');
+        }
+        let vimrcContent = '';
+        try {
+            vimrcContent = await this.app.vault.adapter.read(fileName);
+        } catch (e) {
+            console.log('Error loading vimrc file', fileName, 'from the vault root', e.message) 
+        }
+        // will be used by editor extension
+        this.vimrcContent = vimrcContent;
+        console.log('loaded Vimrc plugin');
+
+    }
 
 	async loadSettings() {
 		const data = await this.loadData();
@@ -203,48 +197,46 @@ export default class VimrcPlugin extends Plugin {
 		return (view as any).editMode?.editor?.cm?.cm;
 	}
 
-	readVimInit(vimCommands: string) {
-		let view = this.getActiveView();
-		if (view) {
-			var cmEditor = this.getCodeMirror(view);
-			if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
-				this.defineBasicCommands(this.codeMirrorVimObject);
-				this.defineSendKeys(this.codeMirrorVimObject);
-				this.defineObCommand(this.codeMirrorVimObject);
-				this.defineSurround(this.codeMirrorVimObject);
-				this.defineJsCommand(this.codeMirrorVimObject);
-				this.defineJsFile(this.codeMirrorVimObject);
+	readVimInit(vimCommands: string, editor: EditorView) {
+        //@ts-expect-error, not typed
+        var cmEditor: CodeMirror.Editor = editor.cm.cm
+        if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
+            this.defineBasicCommands(this.codeMirrorVimObject);
+            this.defineSendKeys(this.codeMirrorVimObject);
+            this.defineObCommand(this.codeMirrorVimObject);
+            this.defineSurround(this.codeMirrorVimObject);
+            this.defineJsCommand(this.codeMirrorVimObject);
+            this.defineJsFile(this.codeMirrorVimObject);
 
-				vimCommands.split("\n").forEach(
-					function (line: string, index: number, arr: [string]) {
-						if (line.trim().length > 0 && line.trim()[0] != '"') {
-							let split = line.split(" ")
-							if (mappingCommands.includes(split[0])) {
-								// Have to do this because "vim-command-done" event doesn't actually work properly, or something.
-								this.customVimKeybinds[split[1]] = true
-							}
-							this.codeMirrorVimObject.handleEx(cmEditor, line);
-						}
-					}.bind(this) // Faster than an arrow function. https://stackoverflow.com/questions/50375440/binding-vs-arrow-function-for-react-onclick-event
-				)
+            vimCommands.split("\n").forEach(
+                function (line: string, index: number, arr: [string]) {
+                    if (line.trim().length > 0 && line.trim()[0] != '"') {
+                        let split = line.split(" ")
+                        if (mappingCommands.includes(split[0])) {
+                            // Have to do this because "vim-command-done" event doesn't actually work properly, or something.
+                            this.customVimKeybinds[split[1]] = true
+                        }
+                        this.codeMirrorVimObject.handleEx(cmEditor, line);
+                    }
+                }.bind(this) // Faster than an arrow function. https://stackoverflow.com/questions/50375440/binding-vs-arrow-function-for-react-onclick-event
+            )
 
-				this.prepareChordDisplay();
-				this.prepareVimModeDisplay();
+            this.prepareChordDisplay();
+            this.prepareVimModeDisplay();
 
-				// Make sure that we load it just once per CodeMirror instance.
-				// This is supposed to work because the Vim state is kept at the keymap level, hopefully
-				// there will not be bugs caused by operations that are kept at the object level instead
-				this.codeMirrorVimObject.loadedVimrc = true;
-			}
+            // Make sure that we load it just once per CodeMirror instance.
+            // This is supposed to work because the Vim state is kept at the keymap level, hopefully
+            // there will not be bugs caused by operations that are kept at the object level instead
+            this.codeMirrorVimObject.loadedVimrc = true;
+        }
 
-			if (cmEditor) {
-				cmEditor.on('vim-mode-change', (modeObj: any) => {
-					if (modeObj)
-						this.logVimModeChange(modeObj);
-				});
-				this.defineFixedLayout(cmEditor);
-			}
-		}
+        if (cmEditor) {
+            cmEditor.on('vim-mode-change', (modeObj: any) => {
+                if (modeObj)
+                    this.logVimModeChange(modeObj);
+            });
+            this.defineFixedLayout(cmEditor);
+        }
 	}
 
 	defineBasicCommands(vimObject: any) {
