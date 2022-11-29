@@ -282,6 +282,36 @@ export default class VimrcPlugin extends Plugin {
 			}
 		});
 
+		vimObject.defineEx('nnoremap', '', (cm: any, params: any) => {
+			if (!params?.args?.length) {
+				throw new Error('Invalid mapping: nnoremap');
+			}
+
+			if (params.argString.trim()) {
+				this.codeMirrorVimObject.noremap.apply(this.codeMirrorVimObject, params.args, "normal");
+			}
+		});
+
+		vimObject.defineEx('inoremap', '', (cm: any, params: any) => {
+			if (!params?.args?.length) {
+				throw new Error('Invalid mapping: inoremap');
+			}
+
+			if (params.argString.trim()) {
+				this.codeMirrorVimObject.noremap.apply(this.codeMirrorVimObject, params.args, "insert");
+			}
+		});
+
+		vimObject.defineEx('vnoremap', '', (cm: any, params: any) => {
+			if (!params?.args?.length) {
+				throw new Error('Invalid mapping: vnoremap');
+			}
+
+			if (params.argString.trim()) {
+				this.codeMirrorVimObject.noremap.apply(this.codeMirrorVimObject, params.args, "visual");
+			}
+		});
+
 		// Allow the user to register an Ex command
 		vimObject.defineEx('exmap', '', (cm: any, params: any) => {
 			if (params?.args?.length && params.args.length < 2) {
