@@ -1,6 +1,8 @@
 import * as keyFromAccelerator from 'keyboardevent-from-electron-accelerator';
-import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import type { EditorView, ViewPlugin } from '@codemirror/view'
+import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting, Editor, editorInfoField } from 'obsidian';
+import type { EditorView } from '@codemirror/view'
+import type { Extension } from '@codemirror/state'
+import { vimInitializer } from 'editorExtension';
 
 declare const CodeMirror: any;
 
@@ -108,9 +110,8 @@ export default class VimrcPlugin extends Plugin {
 		})
 	}
 
-	async updateSelectionEvent(editor: EditorView) {
-        //@ts-expect-error, not typed
-		let { cm } = editor.cm
+	async updateSelectionEvent(cm: CodeMirror.Editor) {
+        if (!cm) return;
 		if (
 			this.getCursorActivityHandlers(cm).some(
 				(e: { name: string }) => e.name === "updateSelection")
@@ -130,6 +131,8 @@ export default class VimrcPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new SettingsTab(this.app, this))
         await this.readVimrc();
+        const initVimStatePlugin: Extension = vimInitializer(this)
+        this.registerEditorExtension(initVimStatePlugin)
 	}
 
     async readVimrc(): Promise<void> {
@@ -193,19 +196,20 @@ export default class VimrcPlugin extends Plugin {
 		return this.app.workspace.getActiveViewOfType(MarkdownView);
 	}
 
-	private getCodeMirror(view: MarkdownView): CodeMirror.Editor {
-		return (view as any).editMode?.editor?.cm?.cm;
+	private getCodeMirror(editor: Editor): CodeMirror.Editor {
+        //@ts-expect-error, not typed
+		return editor?.cm?.cm;
 	}
 
-	readVimInit(vimCommands: string, editor: EditorView) {
+	readVimInit(vimCommands: string, editor: Editor) {
         //@ts-expect-error, not typed
-        var cmEditor: CodeMirror.Editor = editor.cm.cm
+        const cmEditor = editor.cm.cm
         if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
             this.defineBasicCommands(this.codeMirrorVimObject);
             this.defineSendKeys(this.codeMirrorVimObject);
             this.defineObCommand(this.codeMirrorVimObject);
-            this.defineSurround(this.codeMirrorVimObject);
-            this.defineJsCommand(this.codeMirrorVimObject);
+            this.defineSurround(this.codeMirrorVimObject, editor);
+            this.defineJsCommand(this.codeMirrorVimObject, editor);
             this.defineJsFile(this.codeMirrorVimObject);
 
             vimCommands.split("\n").forEach(
@@ -221,7 +225,7 @@ export default class VimrcPlugin extends Plugin {
                 }.bind(this) // Faster than an arrow function. https://stackoverflow.com/questions/50375440/binding-vs-arrow-function-for-react-onclick-event
             )
 
-            this.prepareChordDisplay();
+            this.prepareChordDisplay(editor);
             this.prepareVimModeDisplay();
 
             // Make sure that we load it just once per CodeMirror instance.
@@ -366,10 +370,9 @@ export default class VimrcPlugin extends Plugin {
 		});
 	}
 
-	defineSurround(vimObject: any) {
+	defineSurround(vimObject: any, editor: Editor) {
 		// Function to surround selected text or highlighted word.
 		var surroundFunc = (params: string[]) => {
-			var editor = this.getActiveView().editor;
 			if (!params.length) {
 				throw new Error("surround requires exactly 2 parameters: prefix and postfix text.");
 			}
@@ -434,7 +437,6 @@ export default class VimrcPlugin extends Plugin {
 				 '](' + vimObject.getRegisterController().getRegister('yank').keyBuffer + ")"]);
 		})
 
-		var editor = this.getActiveView().editor;
 		// Handle the surround dialog input
 		var surroundDialogCallback = (value: string) => {
 			if ((/^\[+$/).test(value)) { // check for 1-inf [ and match them with ]
@@ -489,7 +491,7 @@ export default class VimrcPlugin extends Plugin {
 		}
 	}
 
-	prepareChordDisplay() {
+	prepareChordDisplay(editor: Editor) {
 		if (this.settings.displayChord) {
 			// Add status bar item
 			this.vimChordStatusBar = this.addStatusBarItem();
@@ -499,7 +501,7 @@ export default class VimrcPlugin extends Plugin {
 			this.vimChordStatusBar.parentElement.insertBefore(this.vimChordStatusBar, parent.firstChild);
 			this.vimChordStatusBar.style.marginRight = "auto";
 
-			let cmEditor = this.getCodeMirror(this.getActiveView());
+			let cmEditor = this.getCodeMirror(editor);
 			// See https://codemirror.net/doc/manual.html#vimapi_events for events.
 			CodeMirror.on(cmEditor, "vim-keypress", async (vimKey: any) => {
 				if (vimKey != "<Esc>") { // TODO figure out what to actually look for to exit commands.
@@ -549,7 +551,7 @@ export default class VimrcPlugin extends Plugin {
 		});
 	}
 
-	defineJsCommand(vimObject: any) {
+	defineJsCommand(vimObject: any, editor: Editor) {
 		vimObject.defineEx('jscommand', '', (cm: any, params: any) => {
 			if (!this.settings.supportJsCommands)
 				throw new Error("JS commands are turned off; enable them via the Vimrc plugin configuration if you're sure you know what you're doing");
@@ -559,8 +561,9 @@ export default class VimrcPlugin extends Plugin {
 			let currentSelections = this.currentSelection;
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			const command = Function('editor', 'view', 'selection', jsCode);
-			const view = this.getActiveView();
-			command(view.editor, view, chosenSelection);
+            //@ts-ignore
+            const view = (editor.cm as EditorView).state.field(editorInfoField)
+            command(editor, view, chosenSelection);
 		});
 	}
 
