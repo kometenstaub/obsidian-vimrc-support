@@ -35,7 +35,7 @@ export function updateEditor(plugin: VimrcPlugin) {
                 this.plugin.readVimInit(this.plugin.vimrcContent)
 			}
 			update(update: ViewUpdate) {
-				if (update.selectionSet) {
+				if (update.selectionSet || update.focusChanged) {
 					this.updateEditor();
                 }
 

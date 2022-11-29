@@ -583,7 +583,7 @@ export default class VimrcPlugin extends Plugin {
 			const command = Function('editor', 'view', 'selection', content + extraCode);
             //@ts-ignore
             const view = (this.editor.cm as EditorView).state.field(editorInfoField)
-			command(view.editor, view, chosenSelection);
+			command(this.editor, view, chosenSelection);
 		});
 	}
 
