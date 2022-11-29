@@ -2,7 +2,7 @@ import * as keyFromAccelerator from 'keyboardevent-from-electron-accelerator';
 import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting, Editor, editorInfoField } from 'obsidian';
 import type { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
-import { vimInitializer } from 'editorExtension';
+import { updateEditor } from 'editorExtension';
 
 declare const CodeMirror: any;
 
@@ -116,8 +116,11 @@ export default class VimrcPlugin extends Plugin {
 		await this.loadSettings();
 		this.addSettingTab(new SettingsTab(this.app, this))
         await this.readVimrc();
-        const initVimStatePlugin: Extension = vimInitializer(this)
-        this.registerEditorExtension(initVimStatePlugin)
+        // const initVimStatePlugin: Extension = vimInitializer(this)
+        // this.registerEditorExtension(initVimStatePlugin)
+        // this.readBasicVimInit(this.vimrcContent)
+        const currentEditor = updateEditor(this)
+        this.registerEditorExtension(currentEditor)
 	}
 
     async readVimrc(): Promise<void> {
@@ -182,9 +185,11 @@ export default class VimrcPlugin extends Plugin {
 		return editor?.cm?.cm;
 	}
 
-	readVimInit(vimCommands: string, editor: Editor) {
+
+    // only defined once, editor is updated on the plugin from a ViewPlugin
+	readVimInit(vimCommands: string) {
         //@ts-expect-error, not typed
-        const cmEditor = editor.cm.cm
+        const cmEditor = this.editor.cm.cm
         if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
             this.defineBasicCommands(this.codeMirrorVimObject);
             this.defineSendKeys(this.codeMirrorVimObject);
@@ -206,7 +211,7 @@ export default class VimrcPlugin extends Plugin {
                 }.bind(this) // Faster than an arrow function. https://stackoverflow.com/questions/50375440/binding-vs-arrow-function-for-react-onclick-event
             )
 
-            this.prepareChordDisplay(editor);
+            this.prepareChordDisplay();
             this.prepareVimModeDisplay();
 
             // Make sure that we load it just once per CodeMirror instance.
@@ -474,7 +479,8 @@ export default class VimrcPlugin extends Plugin {
 		}
 	}
 
-	prepareChordDisplay(editor: Editor) {
+	prepareChordDisplay() {
+        const editor = this.editor
 		if (this.settings.displayChord) {
 			// Add status bar item
 			this.vimChordStatusBar = this.addStatusBarItem();
