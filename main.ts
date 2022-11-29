@@ -60,6 +60,8 @@ export default class VimrcPlugin extends Plugin {
 	private currentVimStatus: vimStatus = vimStatus.normal;
 	private customVimKeybinds: { [name: string]: boolean } = {};
 	private isInsertMode: boolean = false;
+
+    editor: Editor = null;
     
     vimrcContent: string = "";
 
@@ -175,10 +177,6 @@ export default class VimrcPlugin extends Plugin {
 		console.log('unloading Vimrc plugin (but Vim commands that were already loaded will still work)');
 	}
 
-	private getActiveView(): MarkdownView {
-		return this.app.workspace.getActiveViewOfType(MarkdownView);
-	}
-
 	private getCodeMirror(editor: Editor): CodeMirror.Editor {
         //@ts-expect-error, not typed
 		return editor?.cm?.cm;
@@ -191,8 +189,8 @@ export default class VimrcPlugin extends Plugin {
             this.defineBasicCommands(this.codeMirrorVimObject);
             this.defineSendKeys(this.codeMirrorVimObject);
             this.defineObCommand(this.codeMirrorVimObject);
-            this.defineSurround(this.codeMirrorVimObject, editor);
-            this.defineJsCommand(this.codeMirrorVimObject, editor);
+            this.defineSurround(this.codeMirrorVimObject);
+            this.defineJsCommand(this.codeMirrorVimObject);
             this.defineJsFile(this.codeMirrorVimObject);
 
             vimCommands.split("\n").forEach(
@@ -330,8 +328,9 @@ export default class VimrcPlugin extends Plugin {
 				console.log(`Available commands: ${Object.keys(availableCommands).join('\n')}`)
 				throw new Error(`obcommand requires exactly 1 parameter`);
 			}
-			let view = this.getActiveView();
-			let editor = view.editor;
+			let editor = this.editor;
+            //@ts-ignore
+            const view = (this.editor.cm as EditorView).state.field(editorInfoField)
 			const command = params.args[0];
 			if (command in availableCommands) {
 				let callback = availableCommands[command].callback;
@@ -353,7 +352,7 @@ export default class VimrcPlugin extends Plugin {
 		});
 	}
 
-	defineSurround(vimObject: any, editor: Editor) {
+	defineSurround(vimObject: any) {
 		// Function to surround selected text or highlighted word.
 		var surroundFunc = (params: string[]) => {
 			if (!params.length) {
@@ -368,11 +367,11 @@ export default class VimrcPlugin extends Plugin {
 			let ending = newArgs[1].replace("\\\\", "\\").replace("\\ ", " "); // Get the ending surround text
 
             //@ts-expect-error, not typed
-			let currentSelections = editor.cm.cm.listSelections();
+			let currentSelections = this.editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			if (currentSelections?.length > 1) {
 				console.log("WARNING: Multiple selections in surround. Attempt to select matching cursor. (obsidian-vimrc-support)")
-				const cursorPos = editor.getCursor();
+				const cursorPos = this.editor.getCursor();
 				for (const selection of currentSelections) {
 					if (selection.head.line == cursorPos.line && selection.head.ch == cursorPos.ch) {
 						console.log("RESOLVED: Selection matching cursor found. (obsidian-vimrc-support)")
@@ -383,7 +382,7 @@ export default class VimrcPlugin extends Plugin {
 			}
 			if (JSON.stringify(chosenSelection.anchor) === JSON.stringify(chosenSelection.head)) {
 				// No range of selected text, so select word.
-				var line = editor.getLine(chosenSelection.anchor.line);
+				var line = this.editor.getLine(chosenSelection.anchor.line);
 				if (line.length === 0)
 					throw new Error("can't surround on an empty line");
 				// Go to the beginning of the word
@@ -408,8 +407,8 @@ export default class VimrcPlugin extends Plugin {
 			if (chosenSelection.anchor.line > chosenSelection.head.line ||
 					(chosenSelection.anchor.line == chosenSelection.head.line && chosenSelection.anchor.ch > chosenSelection.head.ch))
 				[chosenSelection.anchor, chosenSelection.head] = [chosenSelection.head, chosenSelection.anchor];
-			let currText = editor.getRange(chosenSelection.anchor, chosenSelection.head);
-			editor.replaceRange(beginning + currText + ending, chosenSelection.anchor, chosenSelection.head);
+			let currText = this.editor.getRange(chosenSelection.anchor, chosenSelection.head);
+			this.editor.replaceRange(beginning + currText + ending, chosenSelection.anchor, chosenSelection.head);
 		}
 
 		vimObject.defineEx("surround", "", (cm: any, params: any) => { surroundFunc(params.args); });
@@ -535,7 +534,7 @@ export default class VimrcPlugin extends Plugin {
 		});
 	}
 
-	defineJsCommand(vimObject: any, editor: Editor) {
+	defineJsCommand(vimObject: any) {
 		vimObject.defineEx('jscommand', '', (cm: any, params: any) => {
 			if (!this.settings.supportJsCommands)
 				throw new Error("JS commands are turned off; enable them via the Vimrc plugin configuration if you're sure you know what you're doing");
@@ -543,12 +542,12 @@ export default class VimrcPlugin extends Plugin {
 			if (jsCode[0] != '{' || jsCode[jsCode.length - 1] != '}')
 				throw new Error("Expected an argument which is JS code surrounded by curly brackets: {...}");
             //@ts-expect-error, not typed
-			let currentSelections = editor.cm.cm.listSelections();
+			let currentSelections = this.editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			const command = Function('editor', 'view', 'selection', jsCode);
             //@ts-ignore
-            const view = (editor.cm as EditorView).state.field(editorInfoField)
-            command(editor, view, chosenSelection);
+            const view = (this.editor.cm as EditorView).state.field(editorInfoField)
+            command(this.editor, view, chosenSelection);
 		});
 	}
 
@@ -567,7 +566,7 @@ export default class VimrcPlugin extends Plugin {
 					throw new Error("Expected an extra code argument which is JS code surrounded by curly brackets: {...}");
 			}
             //@ts-expect-error, not typed
-			let currentSelections = editor.cm.cm.listSelections();
+			let currentSelections = this.editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			let content = '';
 			try {
@@ -577,7 +576,7 @@ export default class VimrcPlugin extends Plugin {
 			}
 			const command = Function('editor', 'view', 'selection', content + extraCode);
             //@ts-ignore
-            const view = (editor.cm as EditorView).state.field(editorInfoField)
+            const view = (this.editor.cm as EditorView).state.field(editorInfoField)
 			command(view.editor, view, chosenSelection);
 		});
 	}
