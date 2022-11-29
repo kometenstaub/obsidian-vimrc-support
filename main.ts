@@ -1,5 +1,5 @@
 import * as keyFromAccelerator from 'keyboardevent-from-electron-accelerator';
-import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting } from 'obsidian';
 
 declare const CodeMirror: any;
 
