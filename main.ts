@@ -409,7 +409,7 @@ export default class VimrcPlugin extends Plugin {
             //@ts-expect-error, not typed
 			let currentSelections = this.editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
-			if (currentSelections?.length > 1) {
+			if (currentSelections && currentSelections?.length > 1) {
 				console.log("WARNING: Multiple selections in surround. Attempt to select matching cursor. (obsidian-vimrc-support)")
 				const cursorPos = this.editor.getCursor();
 				for (const selection of currentSelections) {
