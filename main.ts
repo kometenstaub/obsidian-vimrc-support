@@ -1,5 +1,5 @@
 import * as keyFromAccelerator from 'keyboardevent-from-electron-accelerator';
-import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting, Editor, editorInfoField } from 'obsidian';
+import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting, Editor, editorInfoField, Pos } from 'obsidian';
 import type { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 import { updateEditor } from 'editorExtension';
@@ -63,6 +63,7 @@ export default class VimrcPlugin extends Plugin {
 
     editor: Editor = null;
     done: boolean = false;
+    currentEditor: Extension;
     
     vimrcContent: string = "";
 
@@ -120,7 +121,7 @@ export default class VimrcPlugin extends Plugin {
         // const initVimStatePlugin: Extension = vimInitializer(this)
         // this.registerEditorExtension(initVimStatePlugin)
         // this.readBasicVimInit(this.vimrcContent)
-        const currentEditor = updateEditor(this)
+        const currentEditor = this.currentEditor = updateEditor(this)
         this.registerEditorExtension(currentEditor)
 	}
 
@@ -407,7 +408,7 @@ export default class VimrcPlugin extends Plugin {
 			let ending = newArgs[1].replace("\\\\", "\\").replace("\\ ", " "); // Get the ending surround text
 
             //@ts-expect-error, not typed
-			let currentSelections = this.editor.cm.cm.listSelections();
+			let currentSelections = this.editor.cm.plugin(this.currentEditor).selection
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			if (currentSelections && currentSelections?.length > 1) {
 				console.log("WARNING: Multiple selections in surround. Attempt to select matching cursor. (obsidian-vimrc-support)")

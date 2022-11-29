@@ -1,22 +1,20 @@
 import { EditorView, ViewUpdate, DecorationSet, Decoration, ViewPlugin} from '@codemirror/view'
-import { StateField, EditorState,Transaction} from '@codemirror/state'
+import { StateEffect, StateField, EditorState,Transaction} from '@codemirror/state'
 import VimrcPlugin from "main"
 import {Editor, editorInfoField} from 'obsidian'
 
-//we never dispatch anything, so we don't even need a StateEffect
-//const init = StateEffect.define<boolean>();
-
+// const init = StateEffect.define<boolean>();
+//
 // export function vimInitializer(plugin: VimrcPlugin): StateField<boolean>{
 //     return StateField.define<boolean>({
 //         create(state: EditorState): boolean {
 //             //@ts-ignore
 //             const editor: Editor = state.field(editorInfoField).editor
-//             plugin.readBasicVimInit(plugin.vimrcContent, editor)
 //             return true;
 //         },
 //         //needed, but we never update anything
 //         update(oldState: boolean, transaction: Transaction): boolean {
-//             return true;
+//             return transaction.state);
 //         }
 //     })
 // }
@@ -27,16 +25,23 @@ export function updateEditor(plugin: VimrcPlugin) {
 		class UpdatePlugin {
 			decorations: DecorationSet;
 			plugin: VimrcPlugin;
+            selection: any[];
 
 			constructor(public view: EditorView) {
 				this.decorations = Decoration.none;
 				this.plugin = plugin;
+                this.selection = [];
                 this.updateEditor();
                 if (this.plugin.done) return;
                 this.plugin.readVimInit(this.plugin.vimrcContent)
 			}
 			update(update: ViewUpdate) {
-				if (update.selectionSet || update.focusChanged) {
+                if (update.selectionSet) {
+					this.updateEditor();
+                    //@ts-expect-error, not typed
+                    this.selection = this.plugin.editor.cm.cm.listSelections();
+                }
+                else if (update.focusChanged) {
 					this.updateEditor();
                 }
 
