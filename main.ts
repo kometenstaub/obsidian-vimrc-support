@@ -61,11 +61,11 @@ export default class VimrcPlugin extends Plugin {
 	private customVimKeybinds: { [name: string]: boolean } = {};
 	private isInsertMode: boolean = false;
 
-    editor: Editor = null;
-    done: boolean = false;
-    currentEditor: Extension;
-    
-    vimrcContent: string = "";
+	editor: Editor = null;
+	done: boolean = false;
+	currentEditor: Extension;
+	
+	vimrcContent: string = "";
 
 	async captureKeyboardLayout() {
 		// This is experimental API and it might break at some point:
@@ -97,7 +97,7 @@ export default class VimrcPlugin extends Plugin {
 			this.registerYankEvents(w);
 		})
 
-        // former active-leaf-change events don't get registered anymore though
+		// former active-leaf-change events don't get registered anymore though
 		this.initialized = true;
 	}
 
@@ -117,35 +117,35 @@ export default class VimrcPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.addSettingTab(new SettingsTab(this.app, this))
-        await this.readVimrc();
-        // const initVimStatePlugin: Extension = vimInitializer(this)
-        // this.registerEditorExtension(initVimStatePlugin)
-        // this.readBasicVimInit(this.vimrcContent)
-        const currentEditor = this.currentEditor = updateEditor(this)
-        this.registerEditorExtension(currentEditor)
+		await this.readVimrc();
+		// const initVimStatePlugin: Extension = vimInitializer(this)
+		// this.registerEditorExtension(initVimStatePlugin)
+		// this.readBasicVimInit(this.vimrcContent)
+		const currentEditor = this.currentEditor = updateEditor(this)
+		this.registerEditorExtension(currentEditor)
 	}
 
-    async readVimrc(): Promise<void> {
-        if (!this.initialized)
-            await this.initialize();
-        if (this.codeMirrorVimObject.loadedVimrc)
-            return;
-        let fileName = this.settings.vimrcFileName;
-        if (!fileName || fileName.trim().length === 0) {
-            fileName = DEFAULT_SETTINGS.vimrcFileName;
-            console.log('Configured Vimrc file name is illegal, falling-back to default');
-        }
-        let vimrcContent = '';
-        try {
-            vimrcContent = await this.app.vault.adapter.read(fileName);
-        } catch (e) {
-            console.log('Error loading vimrc file', fileName, 'from the vault root', e.message) 
-        }
-        // will be used by editor extension
-        this.vimrcContent = vimrcContent;
-        console.log('loaded Vimrc plugin');
+	async readVimrc(): Promise<void> {
+		if (!this.initialized)
+			await this.initialize();
+		if (this.codeMirrorVimObject.loadedVimrc)
+			return;
+		let fileName = this.settings.vimrcFileName;
+		if (!fileName || fileName.trim().length === 0) {
+			fileName = DEFAULT_SETTINGS.vimrcFileName;
+			console.log('Configured Vimrc file name is illegal, falling-back to default');
+		}
+		let vimrcContent = '';
+		try {
+			vimrcContent = await this.app.vault.adapter.read(fileName);
+		} catch (e) {
+			console.log('Error loading vimrc file', fileName, 'from the vault root', e.message) 
+		}
+		// will be used by editor extension
+		this.vimrcContent = vimrcContent;
+		console.log('loaded Vimrc plugin');
 
-    }
+	}
 
 	async loadSettings() {
 		const data = await this.loadData();
@@ -183,56 +183,56 @@ export default class VimrcPlugin extends Plugin {
 	}
 
 	private getCodeMirror(editor: Editor): CodeMirror.Editor {
-        //@ts-expect-error, not typed
+		//@ts-expect-error, not typed
 		return editor?.cm?.cm;
 	}
 
 
-    // only defined once, editor is updated on the plugin from a ViewPlugin
+	// only defined once, editor is updated on the plugin from a ViewPlugin
 	readVimInit(vimCommands: string) {
-        //@ts-expect-error, not typed
-        const cmEditor = this.editor.cm.cm
-        if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
-            this.defineBasicCommands(this.codeMirrorVimObject);
-            this.defineSendKeys(this.codeMirrorVimObject);
-            this.defineObCommand(this.codeMirrorVimObject);
-            this.defineSurround(this.codeMirrorVimObject);
-            this.defineJsCommand(this.codeMirrorVimObject);
-            this.defineJsFile(this.codeMirrorVimObject);
+		//@ts-expect-error, not typed
+		const cmEditor = this.editor.cm.cm
+		if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
+			this.defineBasicCommands(this.codeMirrorVimObject);
+			this.defineSendKeys(this.codeMirrorVimObject);
+			this.defineObCommand(this.codeMirrorVimObject);
+			this.defineSurround(this.codeMirrorVimObject);
+			this.defineJsCommand(this.codeMirrorVimObject);
+			this.defineJsFile(this.codeMirrorVimObject);
 
-            vimCommands.split("\n").forEach(
-                function (line: string, index: number, arr: [string]) {
-                    if (line.trim().length > 0 && line.trim()[0] != '"') {
-                        let split = line.split(" ")
-                        if (mappingCommands.includes(split[0])) {
-                            // Have to do this because "vim-command-done" event doesn't actually work properly, or something.
-                            this.customVimKeybinds[split[1]] = true
-                        }
-                        this.codeMirrorVimObject.handleEx(cmEditor, line);
-                    }
-                }.bind(this) // Faster than an arrow function. https://stackoverflow.com/questions/50375440/binding-vs-arrow-function-for-react-onclick-event
-            )
+			vimCommands.split("\n").forEach(
+				function (line: string, index: number, arr: [string]) {
+					if (line.trim().length > 0 && line.trim()[0] != '"') {
+						let split = line.split(" ")
+						if (mappingCommands.includes(split[0])) {
+							// Have to do this because "vim-command-done" event doesn't actually work properly, or something.
+							this.customVimKeybinds[split[1]] = true
+						}
+						this.codeMirrorVimObject.handleEx(cmEditor, line);
+					}
+				}.bind(this) // Faster than an arrow function. https://stackoverflow.com/questions/50375440/binding-vs-arrow-function-for-react-onclick-event
+			)
 
-            this.prepareChordDisplay();
-            this.prepareVimModeDisplay();
+			this.prepareChordDisplay();
+			this.prepareVimModeDisplay();
 
-            // Make sure that we load it just once per CodeMirror instance.
-            // This is supposed to work because the Vim state is kept at the keymap level, hopefully
-            // there will not be bugs caused by operations that are kept at the object level instead
-            this.codeMirrorVimObject.loadedVimrc = true;
-        }
+			// Make sure that we load it just once per CodeMirror instance.
+			// This is supposed to work because the Vim state is kept at the keymap level, hopefully
+			// there will not be bugs caused by operations that are kept at the object level instead
+			this.codeMirrorVimObject.loadedVimrc = true;
+		}
 
-        if (cmEditor) {
-            cmEditor.on('vim-mode-change', (modeObj: any) => {
-                if (modeObj)
-                    this.logVimModeChange(modeObj);
-            });
-            this.defineFixedLayout(cmEditor);
-        }
+		if (cmEditor) {
+			cmEditor.on('vim-mode-change', (modeObj: any) => {
+				if (modeObj)
+					this.logVimModeChange(modeObj);
+			});
+			this.defineFixedLayout(cmEditor);
+		}
 
-        // only initVim once because the commands are all global and the editor is exchanged every time there is an editor udpate
-        // there is no need to register them every time a new editor is updated
-        this.done = true;
+		// only initVim once because the commands are all global and the editor is exchanged every time there is an editor udpate
+		// there is no need to register them every time a new editor is updated
+		this.done = true;
 	}
 
 	defineBasicCommands(vimObject: any) {
@@ -370,8 +370,8 @@ export default class VimrcPlugin extends Plugin {
 				throw new Error(`obcommand requires exactly 1 parameter`);
 			}
 			let editor = this.editor;
-            //@ts-ignore
-            const view = (this.editor.cm as EditorView).state.field(editorInfoField)
+			//@ts-ignore
+			const view = (this.editor.cm as EditorView).state.field(editorInfoField)
 			const command = params.args[0];
 			if (command in availableCommands) {
 				let callback = availableCommands[command].callback;
@@ -407,7 +407,7 @@ export default class VimrcPlugin extends Plugin {
 			let beginning = newArgs[0].replace("\\\\", "\\").replace("\\ ", " "); // Get the beginning surround text
 			let ending = newArgs[1].replace("\\\\", "\\").replace("\\ ", " "); // Get the ending surround text
 
-            //@ts-expect-error, not typed
+			//@ts-expect-error, not typed
 			let currentSelections = this.editor.cm.plugin(this.currentEditor).selection
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			if (currentSelections && currentSelections?.length > 1) {
@@ -516,7 +516,7 @@ export default class VimrcPlugin extends Plugin {
 	}
 
 	prepareChordDisplay() {
-        const editor = this.editor
+		const editor = this.editor
 		if (this.settings.displayChord) {
 			// Add status bar item
 			this.vimChordStatusBar = this.addStatusBarItem();
@@ -583,13 +583,13 @@ export default class VimrcPlugin extends Plugin {
 			const jsCode = params.argString.trim() as string;
 			if (jsCode[0] != '{' || jsCode[jsCode.length - 1] != '}')
 				throw new Error("Expected an argument which is JS code surrounded by curly brackets: {...}");
-            //@ts-expect-error, not typed
+			//@ts-expect-error, not typed
 			let currentSelections = this.editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			const command = Function('editor', 'view', 'selection', jsCode);
-            //@ts-ignore
-            const view = (this.editor.cm as EditorView).state.field(editorInfoField)
-            command(this.editor, view, chosenSelection);
+			//@ts-ignore
+			const view = (this.editor.cm as EditorView).state.field(editorInfoField)
+			command(this.editor, view, chosenSelection);
 		});
 	}
 
@@ -607,7 +607,7 @@ export default class VimrcPlugin extends Plugin {
 				if (extraCode[0] != '{' || extraCode[extraCode.length - 1] != '}')
 					throw new Error("Expected an extra code argument which is JS code surrounded by curly brackets: {...}");
 			}
-            //@ts-expect-error, not typed
+			//@ts-expect-error, not typed
 			let currentSelections = this.editor.cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			let content = '';
@@ -617,8 +617,8 @@ export default class VimrcPlugin extends Plugin {
 				throw new Error(`Cannot read file ${params.args[0]} from vault root: ${e.message}`);
 			}
 			const command = Function('editor', 'view', 'selection', content + extraCode);
-            //@ts-ignore
-            const view = (this.editor.cm as EditorView).state.field(editorInfoField)
+			//@ts-ignore
+			const view = (this.editor.cm as EditorView).state.field(editorInfoField)
 			command(this.editor, view, chosenSelection);
 		});
 	}
