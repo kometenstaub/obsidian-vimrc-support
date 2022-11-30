@@ -40,7 +40,7 @@ export function updateEditor(plugin: VimrcPlugin) {
 					this.updateEditor();
                     //@ts-expect-error, not typed
                     const sel = this.plugin.editor.cm.cm.listSelections()
-                    if (sel.length === 1 && sel[0].anchor.line !== sel[0].head.line || sel[0].anchor.ch !== sel[0].head.ch) {
+                    if (sel.length === 1 && (sel[0].anchor.line !== sel[0].head.line || sel[0].anchor.ch !== sel[0].head.ch)) {
                     //@ts-expect-error, not typed
                         this.selection = this.plugin.editor.cm.cm.listSelections()
                     }
