@@ -39,7 +39,12 @@ export function updateEditor(plugin: VimrcPlugin) {
                 if (update.selectionSet) {
 					this.updateEditor();
                     //@ts-expect-error, not typed
-                    this.selection = this.plugin.editor.cm.cm.listSelections();
+                    const sel = this.plugin.editor.cm.cm.listSelections()
+                    if (sel.length === 1 && sel[0].anchor.line !== sel[0].head.line || sel[0].anchor.ch !== sel[0].head.ch) {
+                    //@ts-expect-error, not typed
+                        this.selection = this.plugin.editor.cm.cm.listSelections()
+                    }
+
                 }
                 else if (update.focusChanged) {
 					this.updateEditor();
