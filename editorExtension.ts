@@ -38,11 +38,9 @@ export function updateEditor(plugin: VimrcPlugin) {
 			update(update: ViewUpdate) {
                 if (update.selectionSet) {
 					this.updateEditor();
-                    //@ts-expect-error, not typed
-                    const sel = this.plugin.editor.cm.cm.listSelections()
+                    const sel = this.view.cm.listSelections()
                     if (sel.length === 1 && (sel[0].anchor.line !== sel[0].head.line || sel[0].anchor.ch !== sel[0].head.ch)) {
-                    //@ts-expect-error, not typed
-                        this.selection = this.plugin.editor.cm.cm.listSelections()
+                        this.selection = this.view.cm.listSelections()
                     }
 
                 }
@@ -53,9 +51,7 @@ export function updateEditor(plugin: VimrcPlugin) {
 			}
 
 			updateEditor() {
-                //@ts-ignore
-				const { editor } = this.view.state.field(editorInfoField);
-                this.plugin.editor = editor;
+                this.plugin.editor = this.view;
 			}
 		},
 		{
