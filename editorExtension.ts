@@ -40,7 +40,7 @@ export function updateEditor(plugin: VimrcPlugin) {
 					this.updateEditor();
                     const sel = this.view.cm.listSelections()
                     if (sel.length === 1 && (sel[0].anchor.line !== sel[0].head.line || sel[0].anchor.ch !== sel[0].head.ch)) {
-                        this.selection = this.view.cm.listSelections()
+                        this.selection = sel;
                     }
 
                 }
