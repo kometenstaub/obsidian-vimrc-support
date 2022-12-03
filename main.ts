@@ -1,5 +1,5 @@
 import * as keyFromAccelerator from 'keyboardevent-from-electron-accelerator';
-import { EditorSelection, Notice, App, MarkdownView, Plugin, PluginSettingTab, Setting, Editor, editorInfoField, Pos } from 'obsidian';
+import { Notice, App, Plugin, PluginSettingTab, Setting, editorInfoField, } from 'obsidian';
 import type { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 import { updateEditor } from 'editorExtension';
