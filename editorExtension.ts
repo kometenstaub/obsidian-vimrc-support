@@ -20,14 +20,16 @@ export function updateEditor(plugin: VimrcPlugin) {
 				if (cursorActivity.some(
 					(e: { name: string }) => e.name === "updateSelection")
 				)return;
-				cm.on("cursorActivity", async (cm: CodeMirror.Editor) => this.plugin.selection = cm.listSelections())
+				cm.on("cursorActivity", async (cm: CodeMirror.Editor) => this.selection = cm.listSelections())
 
                 if (this.plugin.done) return;
                 this.plugin.readVimInit(this.plugin.vimrcContent)
 			}
 
 			update(update: ViewUpdate) {
-				if (update.selectionSet || update.focusChanged) {
+				// only focusChanged doesn't work
+				// maybe focus lost is fired after the new focus is acquired, so alwayx the old editor stays in focus
+				if (update.selectionSet) {
 					this.updateEditor();
 				}
 
