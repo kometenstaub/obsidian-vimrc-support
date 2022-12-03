@@ -40,13 +40,12 @@ export function updateEditor(plugin: VimrcPlugin) {
 				)return;
 				cm.on("cursorActivity", async (cm: CodeMirror.Editor) => this.selection = cm.listSelections())
 
-
-
                 if (this.plugin.done) return;
                 this.plugin.readVimInit(this.plugin.vimrcContent)
 			}
+
 			update(update: ViewUpdate) {
-				if (update.selectionSet && update.focusChanged) this.updateEditor();
+				if (update.selectionSet || update.focusChanged) this.updateEditor();
 
 			}
 
