@@ -32,21 +32,21 @@ export function updateEditor(plugin: VimrcPlugin) {
 				this.plugin = plugin;
                 this.selection = [];
                 this.updateEditor();
+
+				const { cm } = this.view;
+				const { cursorActivity } = (cm as any)._handlers;
+				if (cursorActivity.some(
+					(e: { name: string }) => e.name === "updateSelection")
+				)return;
+				cm.on("cursorActivity", async (cm: CodeMirror.Editor) => this.selection = cm.listSelections())
+
+
+
                 if (this.plugin.done) return;
                 this.plugin.readVimInit(this.plugin.vimrcContent)
 			}
 			update(update: ViewUpdate) {
-                if (update.selectionSet) {
-					this.updateEditor();
-                    const sel = this.view.cm.listSelections()
-                    if (sel.length === 1 && (sel[0].anchor.line !== sel[0].head.line || sel[0].anchor.ch !== sel[0].head.ch)) {
-                        this.selection = sel;
-                    }
-
-                }
-                else if (update.focusChanged) {
-					this.updateEditor();
-                }
+				if (update.selectionSet && update.focusChanged) this.updateEditor();
 
 			}
 
