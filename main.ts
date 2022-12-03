@@ -70,6 +70,7 @@ export default class VimrcPlugin extends Plugin {
 	editor: EditorView = null;
 	done: boolean = false;
 	currentEditor: Extension;
+	selection: any[] = null;
 	
 	vimrcContent: string = "";
 
@@ -409,7 +410,7 @@ export default class VimrcPlugin extends Plugin {
 
 			const { editor } = this.editor.state.field(editorInfoField);
 			//@ts-ignore
-			let currentSelections = this.editor.plugin(this.currentEditor).selection
+			let currentSelections = this.selection
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			if (currentSelections && currentSelections?.length > 1) {
 				console.log("WARNING: Multiple selections in surround. Attempt to select matching cursor. (obsidian-vimrc-support)")
