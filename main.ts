@@ -604,8 +604,7 @@ export default class VimrcPlugin extends Plugin {
 				if (extraCode[0] != '{' || extraCode[extraCode.length - 1] != '}')
 					throw new Error("Expected an extra code argument which is JS code surrounded by curly brackets: {...}");
 			}
-			//@ts-expect-error, not typed
-			let currentSelections = this.editor.cm.cm.listSelections();
+			let currentSelections = this.editor.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			let content = '';
 			try {
@@ -614,8 +613,7 @@ export default class VimrcPlugin extends Plugin {
 				throw new Error(`Cannot read file ${params.args[0]} from vault root: ${e.message}`);
 			}
 			const command = Function('editor', 'view', 'selection', content + extraCode);
-			//@ts-ignore
-			const view = (this.editor.cm as EditorView).state.field(editorInfoField)
+			const view = this.editor.state.field(editorInfoField)
 			const { editor } = this.editor.state.field(editorInfoField);
 			command(editor, view, chosenSelection);
 		});
