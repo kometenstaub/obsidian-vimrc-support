@@ -1,5 +1,5 @@
 import * as keyFromAccelerator from 'keyboardevent-from-electron-accelerator';
-import { Notice, App, Plugin, PluginSettingTab, Setting, editorInfoField, } from 'obsidian';
+import { Notice, App, Plugin, PluginSettingTab, Setting, editorInfoField, Editor } from 'obsidian';
 import type { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 import { updateEditor } from 'editorExtension';
@@ -18,6 +18,12 @@ interface Settings {
 declare module "@codemirror/view" {
 	interface EditorView {
 		cm : CodeMirror.Editor
+	}
+}
+
+declare module "obsidian" {
+	interface Editor {
+		cm : EditorView
 	}
 }
 
@@ -67,11 +73,18 @@ export default class VimrcPlugin extends Plugin {
 	private customVimKeybinds: { [name: string]: boolean } = {};
 	private isInsertMode: boolean = false;
 
-	editor: EditorView = null;
 	done: boolean = false;
 	currentEditor: Extension;
 	
 	vimrcContent: string = "";
+
+	editor (): Editor {
+		const editor = app.workspace.activeEditor;
+		if (!editor) { 
+			return
+		};
+		return editor.editor
+	}
 
 	async captureKeyboardLayout() {
 		// This is experimental API and it might break at some point:
@@ -188,7 +201,8 @@ export default class VimrcPlugin extends Plugin {
 
 	// only defined once, editor is updated on the plugin from a ViewPlugin
 	readVimInit(vimCommands: string) {
-		const cmEditor = this.editor.cm
+		const cmEditor = this.editor().cm.cm;
+		if (!cmEditor) return;
 		if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
 			this.defineBasicCommands(this.codeMirrorVimObject);
 			this.defineSendKeys(this.codeMirrorVimObject);
@@ -366,9 +380,8 @@ export default class VimrcPlugin extends Plugin {
 				console.log(`Available commands: ${Object.keys(availableCommands).join('\n')}`)
 				throw new Error(`obcommand requires exactly 1 parameter`);
 			}
-			const { editor } = this.editor.state.field(editorInfoField);
-			//@ts-ignore
-			const view = this.editor.state.field(editorInfoField)
+			const editor = this.editor();
+			const view = editor.cm.state.field(editorInfoField)
 			const command = params.args[0];
 			if (command in availableCommands) {
 				let callback = availableCommands[command].callback;
@@ -404,9 +417,9 @@ export default class VimrcPlugin extends Plugin {
 			let beginning = newArgs[0].replace("\\\\", "\\").replace("\\ ", " "); // Get the beginning surround text
 			let ending = newArgs[1].replace("\\\\", "\\").replace("\\ ", " "); // Get the ending surround text
 
-			const { editor } = this.editor.state.field(editorInfoField);
+			const editor = this.editor();
 			//@ts-ignore
-			let currentSelections = this.editor.plugin(this.currentEditor).selection
+			let currentSelections = editor.cm.plugin(this.currentEditor).selection
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			if (currentSelections && currentSelections?.length > 1) {
 				console.log("WARNING: Multiple selections in surround. Attempt to select matching cursor. (obsidian-vimrc-support)")
@@ -523,7 +536,7 @@ export default class VimrcPlugin extends Plugin {
 			this.vimChordStatusBar.parentElement.insertBefore(this.vimChordStatusBar, parent.firstChild);
 			this.vimChordStatusBar.style.marginRight = "auto";
 
-			let cmEditor = this.editor.cm
+			let cmEditor = this.editor().cm.cm
 			// See https://codemirror.net/doc/manual.html#vimapi_events for events.
 			CodeMirror.on(cmEditor, "vim-keypress", async (vimKey: any) => {
 				if (vimKey != "<Esc>") { // TODO figure out what to actually look for to exit commands.
@@ -580,12 +593,11 @@ export default class VimrcPlugin extends Plugin {
 			const jsCode = params.argString.trim() as string;
 			if (jsCode[0] != '{' || jsCode[jsCode.length - 1] != '}')
 				throw new Error("Expected an argument which is JS code surrounded by curly brackets: {...}");
-			let currentSelections = this.editor.cm.listSelections();
+			let currentSelections = this.editor().cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			const command = Function('editor', 'view', 'selection', jsCode);
-			//@ts-ignore
-			const view = this.editor.state.field(editorInfoField)
-			const { editor } = this.editor.state.field(editorInfoField);
+			const editor = this.editor();
+			const view = editor.cm.state.field(editorInfoField)
 			command(editor, view, chosenSelection);
 		});
 	}
@@ -604,7 +616,7 @@ export default class VimrcPlugin extends Plugin {
 				if (extraCode[0] != '{' || extraCode[extraCode.length - 1] != '}')
 					throw new Error("Expected an extra code argument which is JS code surrounded by curly brackets: {...}");
 			}
-			let currentSelections = this.editor.cm.listSelections();
+			let currentSelections = this.editor().cm.cm.listSelections();
 			var chosenSelection = currentSelections && currentSelections.length > 0 ? currentSelections[0] : null;
 			let content = '';
 			try {
@@ -613,8 +625,8 @@ export default class VimrcPlugin extends Plugin {
 				throw new Error(`Cannot read file ${params.args[0]} from vault root: ${e.message}`);
 			}
 			const command = Function('editor', 'view', 'selection', content + extraCode);
-			const view = this.editor.state.field(editorInfoField)
-			const { editor } = this.editor.state.field(editorInfoField);
+			const editor = this.editor();
+			const view = editor.cm.state.field(editorInfoField)
 			command(editor, view, chosenSelection);
 		});
 	}

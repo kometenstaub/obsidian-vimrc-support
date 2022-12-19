@@ -13,7 +13,6 @@ export function updateEditor(plugin: VimrcPlugin) {
 				this.decorations = Decoration.none;
 				this.plugin = plugin;
                 this.selection = [];
-                this.updateEditor();
 
 				const { cm } = this.view;
 				const { cursorActivity } = (cm as any)._handlers;
@@ -26,18 +25,6 @@ export function updateEditor(plugin: VimrcPlugin) {
                 this.plugin.readVimInit(this.plugin.vimrcContent)
 			}
 
-			update(update: ViewUpdate) {
-				// only focusChanged doesn't work
-				// maybe focus lost is fired after the new focus is acquired, so alwayx the old editor stays in focus
-				if (update.selectionSet) {
-					this.updateEditor();
-				}
-
-			}
-
-			updateEditor() {
-                this.plugin.editor = this.view;
-			}
 		},
 		{
 			decorations: (v: any) => v.decorations,
