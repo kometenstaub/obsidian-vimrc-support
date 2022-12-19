@@ -22,7 +22,7 @@ export function updateEditor(plugin: VimrcPlugin) {
 				cm.on("cursorActivity", async (cm: CodeMirror.Editor) => this.selection = cm.listSelections())
 
                 if (this.plugin.done) return;
-                this.plugin.readVimInit(this.plugin.vimrcContent)
+                this.plugin.readVimInit(this.plugin.vimrcContent, view)
 			}
 
 		},

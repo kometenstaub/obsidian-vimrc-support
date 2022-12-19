@@ -200,9 +200,8 @@ export default class VimrcPlugin extends Plugin {
 
 
 	// only defined once, editor is updated on the plugin from a ViewPlugin
-	readVimInit(vimCommands: string) {
-		const cmEditor = this.editor().cm.cm;
-		if (!cmEditor) return;
+	readVimInit(vimCommands: string, view: EditorView) {
+		const cmEditor = view.cm
 		if (cmEditor && !this.codeMirrorVimObject.loadedVimrc) {
 			this.defineBasicCommands(this.codeMirrorVimObject);
 			this.defineSendKeys(this.codeMirrorVimObject);
